@@ -21,13 +21,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * currentdeck.c: Current sensor driver
+ * airflowdeck.c: Airflow sensor driver
  */
 
-#define DEBUG_MODULE "CURRENT"
+#define DEBUG_MODULE "AIRFLOW"
 
 #include "FreeRTOS.h"
 #include "task.h"
+// added by Chenyao
+#include "stabilizer_types.h"
 
 #include "deck.h"
 #include "system.h"
@@ -37,34 +39,30 @@
 // #include "range.h"
 // #include "static_mem.h"
 
-#include "currentdeck.h"
+#include "airflowdeck.h"
 
 // #include "cf_math.h"
 
-static float reading_last = 0;
-static float current_last = 0;
-static float current = 0;
+
+static float wind_volts_last = 0;
+static float airspeed_last = 0;
 
 static bool isInit;
 
-void currentDeckInit(DeckInfo* info)
+void airflowDeckInit(DeckInfo* info)
 {
   if (isInit)
     return;
 
-  xTaskCreate(currentDeckTask, CURRENTDECK_TASK_NAME, CURRENTDECK_TASK_STACKSIZE, NULL, CURRENTDECK_TASK_PRI, NULL);
+  xTaskCreate(airflowDeckTask, AIRFLOWDECK_TASK_NAME, AIRFLOWDECK_TASK_STACKSIZE, NULL, AIRFLOWDECK_TASK_PRI, NULL);
 
   isInit = true;
-
-  DEBUG_PRINT("Current deck initialization is done.\n");
 }
 
-bool currentDeckTest(void)
+bool airflowDeckTest()
 {
   bool testStatus;
   testStatus = true;
-
-  DEBUG_PRINT("Current deck test is done.\n");
 
   if (!isInit)
     return false;
@@ -72,7 +70,7 @@ bool currentDeckTest(void)
   return testStatus;
 }
 
-void currentDeckTask(void* arg)
+void airflowDeckTask(void* arg)
 {
   systemWaitStart();
   TickType_t xLastWakeTime;
@@ -82,34 +80,34 @@ void currentDeckTask(void* arg)
   while (1) {
     vTaskDelayUntil(&xLastWakeTime, M2T(1));
 
-    reading_last = analogReadVoltage(DECK_GPIO_SCK);
-    current_last = 36.7f*reading_last/3.0f-18.3f;
-
-    current = 0.975f*current + 0.025f*current_last;
+    wind_volts_last = analogReadVoltage(DECK_GPIO_MISO);
+    flowvolt.volt = wind_volts_last;
+    airspeed_last = 25.8666354823914f*wind_volts_last*wind_volts_last*wind_volts_last*wind_volts_last-1.664910993036515e2f*wind_volts_last*wind_volts_last*wind_volts_last+4.030483719450837e2f*wind_volts_last*wind_volts_last-4.325309182694595e2f*wind_volts_last+1.730907713055474e2f;
   }
 }
 
-static const DeckDriver current_deck = {
+static const DeckDriver airflow_deck = {
   .vid = 0xBC,
-  .pid = 0x09,
-  .name = "bcCurrentDeck",
-  .usedGpio = DECK_USING_PA5,
+  .pid = 0x02,
+  .name = "bcAirflowDeck",
+  .usedGpio = DECK_USING_PA6,
 
-  .init = currentDeckInit,
-  .test = currentDeckTest,
+  .init = airflowDeckInit,
+  .test = airflowDeckTest,
 };
 
-DECK_DRIVER(current_deck);
+DECK_DRIVER(airflow_deck);
 
 
 
 PARAM_GROUP_START(deck)
 
-PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcCurrentDeck, &isInit)
+PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, airflowDeck, &isInit)
 PARAM_GROUP_STOP(deck)
 
-LOG_GROUP_START(current)
-LOG_ADD(LOG_FLOAT, v_raw, &reading_last)
-LOG_ADD(LOG_FLOAT, i_raw, &current_last)
-LOG_ADD(LOG_FLOAT, current, &current)
-LOG_GROUP_STOP(current)
+LOG_GROUP_START(airflow)
+LOG_ADD(LOG_FLOAT, v_wind_ext, &wind_volts_last)
+LOG_ADD(LOG_FLOAT, airspeed_ext, &airspeed_last)
+// LOG_ADD(LOG_FLOAT, v_temp_ext, &temp_volts_last)
+// LOG_ADD(LOG_FLOAT, tempC_ext, &tempC_last)
+LOG_GROUP_STOP(airflow)

@@ -145,6 +145,7 @@ bool controllerINDITest(void)
 void controllerINDI(control_t *control, setpoint_t *setpoint,
 		const sensorData_t *sensors,
 		const state_t *state,
+		const voltair_t *flowvolt,
 		const uint32_t tick)
 {
 
@@ -167,7 +168,7 @@ void controllerINDI(control_t *control, setpoint_t *setpoint,
 	}
 
 	if (RATE_DO_EXECUTE(POSITION_RATE, tick) && !outerLoopActive) {
-		positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
+		positionController(&actuatorThrust, &attitudeDesired, setpoint, state, flowvolt);
 	}
 
 	/*

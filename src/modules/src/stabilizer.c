@@ -54,6 +54,8 @@
 #include "statsCnt.h"
 #include "static_mem.h"
 #include "rateSupervisor.h"
+#include "stabilizer_types.h"
+#include "airflowdeck.h"
 
 static bool isInit;
 static bool emergencyStop = false;
@@ -66,6 +68,9 @@ static setpoint_t setpoint;
 static sensorData_t sensorData;
 static state_t state;
 static control_t control;
+
+// added by Chenyao
+voltair_t flowvolt;
 
 static StateEstimatorType estimatorType;
 static ControllerType controllerType;
@@ -168,6 +173,7 @@ void stabilizerInit(StateEstimatorType estimator)
     return;
 
   sensorsInit();
+  
   stateEstimatorInit(estimator);
   controllerInit(ControllerTypeAny);
   powerDistributionInit();
@@ -238,6 +244,7 @@ static void stabilizerTask(void* param)
 
     // update sensorData struct (for logging variables)
     sensorsAcquire(&sensorData, tick);
+    
 
     if (healthShallWeRunTest()) {
       healthRunTests(&sensorData);
@@ -260,8 +267,8 @@ static void stabilizerTask(void* param)
       compressSetpoint();
 
       collisionAvoidanceUpdateSetpoint(&setpoint, &sensorData, &state, tick);
-
-      controller(&control, &setpoint, &sensorData, &state, tick);
+    // modified by Chenyao
+      controller(&control, &setpoint, &sensorData, &state, &flowvolt, tick);
 
       checkEmergencyStopTimeout();
 

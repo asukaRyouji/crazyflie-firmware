@@ -213,6 +213,8 @@ PROJ_OBJ += multiranger.o
 PROJ_OBJ += lighthouse.o
 PROJ_OBJ += activeMarkerDeck.o
 PROJ_OBJ += currentdeck.o
+PROJ_OBJ += airflowdeck.o
+PROJ_OBJ += potpitchdeck.o
 
 # Uart2 Link for CRTP communication is not compatible with decks using uart2
 ifeq ($(UART2_LINK), 1)

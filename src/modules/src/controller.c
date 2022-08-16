@@ -12,10 +12,11 @@ static ControllerType currentController = ControllerTypeAny;
 
 static void initController();
 
+//modified by Chenyao
 typedef struct {
   void (*init)(void);
   bool (*test)(void);
-  void (*update)(control_t *control, setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const uint32_t tick);
+  void (*update)(control_t *control, setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const voltair_t *flowvolt, const uint32_t tick);
   const char* name;
 } ControllerFcns;
 
@@ -61,8 +62,9 @@ bool controllerTest(void) {
   return controllerFunctions[currentController].test();
 }
 
-void controller(control_t *control, setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const uint32_t tick) {
-  controllerFunctions[currentController].update(control, setpoint, sensors, state, tick);
+// modified by Chenyao
+void controller(control_t *control, setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const voltair_t *flowvolt, const uint32_t tick) {
+  controllerFunctions[currentController].update(control, setpoint, sensors, state, flowvolt, tick);
 }
 
 const char* controllerGetName() {

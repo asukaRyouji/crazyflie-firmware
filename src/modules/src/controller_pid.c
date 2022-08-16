@@ -28,6 +28,7 @@ static float r_roll;
 static float r_pitch;
 static float r_yaw;
 static float accelz;
+static float volnKF;
 
 bool flying = 0;
 
@@ -63,6 +64,7 @@ static float capAngle(float angle) {
 void controllerPid(control_t *control, setpoint_t *setpoint,
                                          const sensorData_t *sensors,
                                          const state_t *state,
+                                         const voltair_t *flowvolt,
                                          const uint32_t tick)
 {
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
@@ -90,8 +92,10 @@ void controllerPid(control_t *control, setpoint_t *setpoint,
   }
 
   if (RATE_DO_EXECUTE(POSITION_RATE, tick)) {
-    positionController(&actuatorThrust, &attitudeDesired, setpoint, state);
+    positionController(&actuatorThrust, &attitudeDesired, setpoint, state, flowvolt);
   }
+// added by Chenyao, to check whether it has been passed into position controller
+  volnKF = flowvolt->volt;
 
   if (RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
     // Switch between manual and automatic position control
@@ -244,6 +248,11 @@ LOG_ADD(LOG_FLOAT, pitchRate, &rateDesired.pitch)
  * @brief Desired yaw rate setpoint
  */
 LOG_ADD(LOG_FLOAT, yawRate,   &rateDesired.yaw)
+// added by Chenyao
+/**
+ * @brief Airflow voltage raw readings, to see whether being passed
+ */
+LOG_ADD(LOG_FLOAT, vol_nKF,   &volnKF)
 LOG_GROUP_STOP(controller)
 
 

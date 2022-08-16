@@ -21,10 +21,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * currentdeck.c: Current sensor driver
+ * potpitch.c: dihedral POT driver
  */
 
-#define DEBUG_MODULE "CURRENT"
+#define DEBUG_MODULE "POTPITCHDECK"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -37,34 +37,28 @@
 // #include "range.h"
 // #include "static_mem.h"
 
-#include "currentdeck.h"
+#include "potpitchdeck.h"
 
 // #include "cf_math.h"
 
-static float reading_last = 0;
-static float current_last = 0;
-static float current = 0;
+static float volts_pitch = 0;
 
 static bool isInit;
 
-void currentDeckInit(DeckInfo* info)
+void potPitchDeckInit(DeckInfo* info)
 {
   if (isInit)
     return;
 
-  xTaskCreate(currentDeckTask, CURRENTDECK_TASK_NAME, CURRENTDECK_TASK_STACKSIZE, NULL, CURRENTDECK_TASK_PRI, NULL);
+  xTaskCreate(potPitchDeckTask, POTPITCHDECK_TASK_NAME, POTPITCHDECK_TASK_STACKSIZE, NULL, POTPITCHDECK_TASK_PRI, NULL);
 
   isInit = true;
-
-  DEBUG_PRINT("Current deck initialization is done.\n");
 }
 
-bool currentDeckTest(void)
+bool potPitchDeckTest(void)
 {
   bool testStatus;
   testStatus = true;
-
-  DEBUG_PRINT("Current deck test is done.\n");
 
   if (!isInit)
     return false;
@@ -72,7 +66,7 @@ bool currentDeckTest(void)
   return testStatus;
 }
 
-void currentDeckTask(void* arg)
+void potPitchDeckTask(void* arg)
 {
   systemWaitStart();
   TickType_t xLastWakeTime;
@@ -82,34 +76,31 @@ void currentDeckTask(void* arg)
   while (1) {
     vTaskDelayUntil(&xLastWakeTime, M2T(1));
 
-    reading_last = analogReadVoltage(DECK_GPIO_SCK);
-    current_last = 36.7f*reading_last/3.0f-18.3f;
-
-    current = 0.975f*current + 0.025f*current_last;
+    volts_pitch = analogReadVoltage(DECK_GPIO_MOSI);
+    // airspeed_last = 25.8666354823914*pow(wind_volts_last,4)+4.030483719450837e2*pow(wind_volts_last,3)-1.664910993036515e2*pow(wind_volts_last,2)-4.325309182694595e2*pow(wind_volts_last,1)+1.730907713055474e2;
   }
 }
 
-static const DeckDriver current_deck = {
+static const DeckDriver potpitch_deck = {
   .vid = 0xBC,
-  .pid = 0x09,
-  .name = "bcCurrentDeck",
-  .usedGpio = DECK_USING_PA5,
+  .pid = 0x0A,
+  .name = "bcPotPitchDeck",
+  .usedGpio = DECK_USING_PA7,
 
-  .init = currentDeckInit,
-  .test = currentDeckTest,
+  .init = potPitchDeckInit,
+  .test = potPitchDeckTest,
 };
 
-DECK_DRIVER(current_deck);
+DECK_DRIVER(potpitch_deck);
 
 
 
 PARAM_GROUP_START(deck)
 
-PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcCurrentDeck, &isInit)
+PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, potPitchDeck, &isInit)
 PARAM_GROUP_STOP(deck)
 
-LOG_GROUP_START(current)
-LOG_ADD(LOG_FLOAT, v_raw, &reading_last)
-LOG_ADD(LOG_FLOAT, i_raw, &current_last)
-LOG_ADD(LOG_FLOAT, current, &current)
-LOG_GROUP_STOP(current)
+LOG_GROUP_START(potPitch)
+LOG_ADD(LOG_FLOAT, volt_pitch, &volts_pitch)
+// LOG_ADD(LOG_FLOAT, airspeed_ext, &airspeed_last)
+LOG_GROUP_STOP(potPitch)

@@ -7,7 +7,7 @@
  *
  * Crazyflie control firmware
  *
- * Copyright (C) 2011-2016 Bitcraze AB
+ * Copyright (C) 2012 BitCraze AB
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,29 +21,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * controller.h - Controller interface
+ * potpitch.h: dihedral servo POT driver
  */
-#ifndef __CONTROLLER_H__
-#define __CONTROLLER_H__
 
-#include "stabilizer_types.h"
+#ifndef _POTPITCHDECK_H_
+#define _POTPITCHDECK_H_
 
-typedef enum {
-  ControllerTypeAny,
-  ControllerTypePID,
-  ControllerTypeMellinger,
-  ControllerTypeINDI,
-  ControllerType_COUNT,
-} ControllerType;
+#include "deck_core.h"
 
-void controllerInit(ControllerType controller);
-bool controllerTest(void);
-void controller(control_t *control, setpoint_t *setpoint,
-                                         const sensorData_t *sensors,
-                                         const state_t *state,
-                                         const voltair_t *flowvolt,
-                                         const uint32_t tick);
-ControllerType getControllerType(void);
-const char* controllerGetName();
+void potPitchDeckInit(DeckInfo* info);
 
-#endif //__CONTROLLER_H__
+bool potPitchDeckTest(void);
+void potPitchDeckTask(void* arg);
+
+#endif /* _POTPITCHDECK_H_ */

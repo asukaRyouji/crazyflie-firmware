@@ -77,6 +77,33 @@ static float velMaxOverhead = 1.10f;
 
 static const float thrustScale = 1000.0f;
 
+// added by Chenyao for EKF
+static float xkk = 1.433;
+static float pkk = 0.0001;
+static float Q = 0.001;
+static float R = 0.01;
+
+static float xk1k = 0.0;
+static float pk1k = 0.0;
+static float kk1 = 0.0;
+static float volt_kf = 0.0;
+static float volt_air = 0.0;
+
+static float thres_200 = 1.74;
+static float thres_300 = 1.83;
+static float thres_400 = 1.905;
+static float thres_500 = 1.96;
+static float thres_700 = 2.01;
+static int len = 10;
+
+static int s = 0;
+static int s_prev = 0;
+static int S = 0;
+static int S_prev = 0;
+
+static float kFF[6] = {10.0, 17.0, 18.5, 19.0, 21.5, 23.0};
+// static float kFFx_af = 0;
+
 static float kFFx = 10.0; // feedforward term for x direction [deg / m/s]
 static float kFFy = 5.0; // feedforward term for x direction [deg / m/s]
 
@@ -214,7 +241,8 @@ static float runPid(float input, struct pidAxis_s *axis, float setpoint, float d
 }
 
 void positionControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state)
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt)
 {
   this.pidX.pid.outputLimit = xBodyVelMax * velMaxOverhead;
   this.pidY.pid.outputLimit = yBodyVelMax * velMaxOverhead;
@@ -255,11 +283,12 @@ void positionControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *s
   setpointvx = globalvx;
   setpointvy = globalvy;
 
-  velocityControllerInBody(thrust, attitude, setpoint, state);
+  velocityControllerInBody(thrust, attitude, setpoint, state, flowvolt);
 }
 
 void positionControllerInGlobal(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state)
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt)
 {
   this.pidX.pid.outputLimit = xyVelMax * velMaxOverhead;
   this.pidY.pid.outputLimit = xyVelMax * velMaxOverhead;
@@ -290,11 +319,12 @@ void positionControllerInGlobal(float* thrust, attitude_t *attitude, setpoint_t 
   setpointvx = setpoint->velocity.x;
   setpointvy = setpoint->velocity.y;
 
-  velocityController(thrust, attitude, setpoint, state);
+  velocityController(thrust, attitude, setpoint, state, flowvolt);
 }
 
 void velocityController(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state)
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt)
 {
   this.pidVX.pid.outputLimit = rpLimit * rpLimitOverhead;
   this.pidVY.pid.outputLimit = rpLimit * rpLimitOverhead;
@@ -324,7 +354,8 @@ void velocityController(float* thrust, attitude_t *attitude, setpoint_t *setpoin
 }
 
 void velocityControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state)
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt)
 {
   this.pidVX.pid.outputLimit = pLimit * rpLimitOverhead;
   this.pidVY.pid.outputLimit = rLimit * rpLimitOverhead;
@@ -336,6 +367,49 @@ void velocityControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *s
   float sinyaw = sinf(state->attitude.yaw * (float)M_PI / 180.0f);
   float state_body_vx = state->velocity.x * cosyaw + state->velocity.y * sinyaw;
   float state_body_vy = -state->velocity.x * sinyaw + state->velocity.y * cosyaw;
+  volt_air = flowvolt->volt;
+
+  // added by Chenyao EKF
+  xk1k = xkk;
+  pk1k = pkk + 0.01f*Q*0.01f;
+  kk1 = pk1k/(pk1k+R);
+  xkk = xk1k + kk1*(volt_air-xk1k);
+  volt_kf = xkk;
+  pkk = (1-kk1)*pk1k*(1-kk1)+kk1*R*kk1;
+
+  if (volt_kf <= thres_200){
+    s = 1;
+  } else if (volt_kf > thres_200 && volt_kf <= thres_300){
+    s = 2;
+  } else if (volt_kf > thres_300 && volt_kf <= thres_400){
+    s = 3;
+  } else if (volt_kf > thres_400 && volt_kf <= thres_500){
+    s = 4;
+  } else if (volt_kf > thres_500 && volt_kf <= thres_700){
+    s = 5;
+  } else if (volt_kf > thres_700){
+    s = 6;
+  }
+
+  if (s == s_prev){
+    if (S_prev+1 <= len){
+      S = S_prev + 1;
+    } else {
+      S = len;
+    };
+  } else {
+    S = 0;
+  }
+
+  if (S == len){
+    kFFx = kFF[s-1];
+  } else if (s == 0 || s == 1){
+    kFFx = kFF[0];
+  }
+
+  s_prev = s;
+  S_prev = S;
+
 
   // Roll and Pitch
   attitude->pitch = -runPid(state_body_vx, &this.pidVX, setpoint->velocity.x, DT) - kFFx*setpoint->velocity.x;
@@ -359,13 +433,14 @@ void velocityControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *s
 }
 
 void positionController(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state)
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt)
 {
   setpointx = setpoint->position.x;
   setpointy = setpoint->position.y;
   
-  if (POSITION_CONTROL_IN_BODY) positionControllerInBody(thrust, attitude, setpoint, state);
-  else positionControllerInGlobal(thrust, attitude, setpoint, state);
+  if (POSITION_CONTROL_IN_BODY) positionControllerInBody(thrust, attitude, setpoint, state, flowvolt);
+  else positionControllerInGlobal(thrust, attitude, setpoint, state, flowvolt);
 }
 
 void positionControllerResetAllPID()
@@ -499,6 +574,22 @@ LOG_ADD(LOG_FLOAT, VZi, &this.pidVZ.pid.outI)
  * @brief PID intrgral output velocity z
  */
 LOG_ADD(LOG_FLOAT, VZd, &this.pidVZ.pid.outD)
+/**
+ * @brief Airflow voltage being filtered by EKF
+ */
+LOG_ADD(LOG_FLOAT, voltKF, &volt_kf)
+/**
+ * @brief states in adaptive controller
+ */
+LOG_ADD(LOG_INT8, state, &s)
+/**
+ * @brief States in adaptive controller
+ */
+LOG_ADD(LOG_INT8, State, &S)
+/**
+ * @brief Selected kFFx values in adaptive controller
+ */
+LOG_ADD(LOG_FLOAT, kFFx_ad, &kFFx)
 
 LOG_GROUP_STOP(posCtl)
 

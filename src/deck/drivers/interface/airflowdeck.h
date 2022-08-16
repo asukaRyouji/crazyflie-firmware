@@ -7,7 +7,7 @@
  *
  * Crazyflie control firmware
  *
- * Copyright (C) 2011-2016 Bitcraze AB
+ * Copyright (C) 2012 BitCraze AB
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,29 +21,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * controller.h - Controller interface
+ * airflowdeck.h: Airflow-deck driver
  */
-#ifndef __CONTROLLER_H__
-#define __CONTROLLER_H__
 
+#ifndef _AIRFLOWDECK_H_
+#define _AIRFLOWDECK_H_
+
+#include "deck_core.h"
 #include "stabilizer_types.h"
 
-typedef enum {
-  ControllerTypeAny,
-  ControllerTypePID,
-  ControllerTypeMellinger,
-  ControllerTypeINDI,
-  ControllerType_COUNT,
-} ControllerType;
 
-void controllerInit(ControllerType controller);
-bool controllerTest(void);
-void controller(control_t *control, setpoint_t *setpoint,
-                                         const sensorData_t *sensors,
-                                         const state_t *state,
-                                         const voltair_t *flowvolt,
-                                         const uint32_t tick);
-ControllerType getControllerType(void);
-const char* controllerGetName();
 
-#endif //__CONTROLLER_H__
+
+void airflowDeckInit(DeckInfo* info);
+
+bool airflowDeckTest(void);
+
+void airflowDeckTask(void* arg);
+
+#endif /* _AIRFLOWDECK_H_ */

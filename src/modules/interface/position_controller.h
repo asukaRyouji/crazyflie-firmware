@@ -34,14 +34,19 @@ void positionControllerInit();
 void positionControllerResetAllPID();
 void positionControllerResetAllfilters();
 void positionController(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state);
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt);
 void velocityController(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state);
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt);
 void positionControllerInGlobal(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state);
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt);
 void positionControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state);
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt);
 void velocityControllerInBody(float* thrust, attitude_t *attitude, setpoint_t *setpoint,
-                                                             const state_t *state);
+                                                             const state_t *state,
+                                                             const voltair_t *flowvolt);
 
 #endif /* POSITION_CONTROLLER_H_ */

@@ -101,6 +101,14 @@ typedef struct baro_s {
   float asl;                // m (ASL = altitude above sea level)
 } baro_t;
 
+// added by Chenyao
+typedef struct voltair_s{
+  float volt; // voltages from the airflow sensor
+} voltair_t;
+
+// added by Chenyao
+extern voltair_t flowvolt;
+
 typedef struct positionMeasurement_s {
   union {
     struct {
@@ -287,7 +295,6 @@ typedef struct
 {
   baro_t baro; // for legacy reasons
 } barometerMeasurement_t;
-
 
 // Frequencies to bo used with the RATE_DO_EXECUTE_HZ macro. Do NOT use an arbitrary number.
 #define RATE_1000_HZ 1000

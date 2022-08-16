@@ -112,6 +112,7 @@ bool controllerINDITest(void);
 void controllerINDI(control_t *control, setpoint_t *setpoint,
                                          const sensorData_t *sensors,
                                          const state_t *state,
+                                         const voltair_t *flowvolt,
                                          const uint32_t tick);
 
 #endif //__CONTROLLER_INDI_H__
